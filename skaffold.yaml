@@ -1,0 +1,42 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: my-app-local
+build:
+  local:
+    push: false
+  artifacts:
+    - image: ghcr.io/medindev/my-app
+      context: application
+      docker:
+        dockerfile: Dockerfile.dev
+      sync:
+        manual:
+          - src: "src/**/*.js"
+            dest: /app/src
+          - src: "src/**/*.ts"
+            dest: /app/src
+manifests:
+  rawYaml:
+    - kubernetes/base/namespace.yaml
+    - kubernetes/base/configmap.yaml
+    - kubernetes/base/secret.yaml
+    - kubernetes/base/pvc.yaml
+    - kubernetes/base/deployment.yaml
+    - kubernetes/base/service.yaml
+    - kubernetes/base/ingress.yaml
+    - kubernetes/base/hpa.yaml
+deploy:
+  kubectl: {}
+portForward:
+  - resourceType: service
+    resourceName: my-app-clusterip
+    namespace: dev
+    port: 80
+    localPort: 3000
+profiles:
+  - name: dev
+    activation:
+      - kubeContext: minikube
+    deploy:
+      kubectl: {}
