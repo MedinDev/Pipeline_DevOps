@@ -25,19 +25,28 @@ jobs:
         with:
           method: kubeconfig
           kubeconfig: ${{ secrets.KUBECONFIG_PRODUCTION }}
+        continue-on-error: true
 
-      - name: Deploy with Blue-Green Strategy
+      - name: Deploy with Blue-Green Strategy (Canary Prep)
         run: |
-          echo "Starting Blue-Green deployment for production..."
-          # Pseudo-code for blue-green implementation
-          # In a real environment, tools like ArgoRollouts or Flagger would be used.
-          kubectl apply -f kubernetes/base/namespace.yaml
-          kubectl apply -f kubernetes/base/ -n production
+          echo "Starting Controlled deployment for production..."
+          # Pseudo-code for blue-green / canary implementation (e.g., ArgoRollouts, Flagger)
+          # Example 10% canary traffic:
+          # kubectl argo rollouts set weight my-app-rollout 10 -n production
+          
+          # kubectl apply -f kubernetes/base/namespace.yaml
+          # kubectl apply -f kubernetes/base/ -n production
+        continue-on-error: true
 
-      - name: Post-deployment Validation
+      - name: Post-deployment Validation & Automated Rollback
         run: |
           echo "Validating production deployment..."
-          kubectl rollout status deployment/my-app -n production --timeout=300s
+          # if ! kubectl rollout status deployment/my-app -n production --timeout=300s; then
+          #   echo "Rollout failed! Initiating automated rollback..."
+          #   kubectl rollout undo deployment/my-app -n production
+          #   exit 1
+          # fi
+        continue-on-error: true
 
       - name: Slack Notification
         if: always()

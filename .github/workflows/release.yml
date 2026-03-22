@@ -1,0 +1,30 @@
+name: Release Management
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: simple
+          package-name: my-app
+
+      - name: Notify Release on Slack
+        if: ${{ steps.release.outputs.release_created }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_MESSAGE: 'New Release: ${{ steps.release.outputs.tag_name }} is available! Changelog: ${{ steps.release.outputs.body }}'
+          SLACK_TITLE: 'App Release Created'

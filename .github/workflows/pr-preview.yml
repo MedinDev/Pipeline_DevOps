@@ -1,0 +1,62 @@
+name: PR Preview Environment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-preview-${{ github.event.number }}
+      url: http://pr-${{ github.event.number }}.example.com
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Preview Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./application
+          file: ./application/Dockerfile
+          push: false # Set to true in real env after login
+          tags: ghcr.io/${{ github.repository_owner }}/my-app:pr-${{ github.event.number }}
+          load: true
+
+      - name: Configure Kubernetes Credentials
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_STAGING }}
+        continue-on-error: true # Placeholder for local testing
+
+      - name: Deploy to PR Namespace
+        run: |
+          echo "Deploying to PR Namespace: pr-${{ github.event.number }}"
+          # Replace placeholder namespace in manifests
+          # kubectl create namespace pr-${{ github.event.number }} --dry-run=client -o yaml | kubectl apply -f -
+          # kubectl apply -f kubernetes/base/ -n pr-${{ github.event.number }}
+        continue-on-error: true
+
+  cleanup-preview:
+    name: Cleanup PR Preview
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Kubernetes Credentials
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_STAGING }}
+        continue-on-error: true
+
+      - name: Delete PR Namespace
+        run: |
+          echo "Cleaning up PR Namespace: pr-${{ github.event.number }}"
+          # kubectl delete namespace pr-${{ github.event.number }}
+        continue-on-error: true
