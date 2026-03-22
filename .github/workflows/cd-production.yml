@@ -1,0 +1,48 @@
+name: CD Pipeline - Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: 
+      name: production
+      url: https://my-app.production.example.com
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure Kubernetes Credentials
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_PRODUCTION }}
+
+      - name: Deploy with Blue-Green Strategy
+        run: |
+          echo "Starting Blue-Green deployment for production..."
+          # Pseudo-code for blue-green implementation
+          # In a real environment, tools like ArgoRollouts or Flagger would be used.
+          kubectl apply -f kubernetes/base/namespace.yaml
+          kubectl apply -f kubernetes/base/ -n production
+
+      - name: Post-deployment Validation
+        run: |
+          echo "Validating production deployment..."
+          kubectl rollout status deployment/my-app -n production --timeout=300s
+
+      - name: Slack Notification
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_MESSAGE: 'Production deployment finished with status: ${{ job.status }}'
+          SLACK_TITLE: 'Production Deployment'

@@ -1,0 +1,47 @@
+name: CD Pipeline - Staging
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: staging
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure Kubernetes Credentials
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_STAGING }}
+
+      - name: Update Kubernetes Manifests
+        run: |
+          cd kubernetes/base
+          # In a real setup, we would use Kustomize or Helm. For now, simple sed replacement
+          sed -i "s|image: ghcr.io/medindev/my-app:.*|image: ghcr.io/${{ github.repository_owner }}/my-app:${{ github.sha }}|g" deployment.yaml
+
+      - name: Apply Manifests
+        run: |
+          kubectl apply -f kubernetes/base/namespace.yaml
+          kubectl apply -f kubernetes/base/ -n staging
+
+      - name: Wait for Rollout
+        run: |
+          kubectl rollout status deployment/my-app -n staging --timeout=300s
+
+      - name: Run Smoke Tests
+        run: |
+          echo "Running smoke tests against staging environment..."
+          # Insert smoke test logic (e.g., using curl or a dedicated script)
+          sleep 10
+          echo "Smoke tests passed!"
