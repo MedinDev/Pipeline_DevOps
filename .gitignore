@@ -1,0 +1,25 @@
+# Dependencies & build output
+node_modules/
+dist/
+coverage/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform.lock.hcl
+
+# Logs
+*.log
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
